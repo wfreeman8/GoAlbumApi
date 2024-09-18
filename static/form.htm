@@ -1,0 +1,202 @@
+<html>
+<head>
+<!-- <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script> -->
+<script type="text/javascript" src="http://localhost/wordpress/wp-includes/js/jquery/jquery.js"></script>
+<script type="text/javascript">
+$ = jQuery;
+$(function() {
+  $("#frmCreateAlbum").submit(function(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    let formData = {}
+    const $form = $(e.target)
+    $("input:text, textarea", $form).each((idx, ele) => {
+      console.log(ele)
+      if ($(ele).attr("type") === "json") {
+        const parsedJson = JSON.parse($(ele).val())
+        if (parsedJson) {
+          formData[ele.name] = parsedJson
+        }
+        else {
+          $(".error").html("json is incorrect")
+          return false;
+        }
+      }
+      else {
+        formData[ele.name] = ele.value
+      }
+    })
+    if (formData['json']) {
+      formData = JSON.parse(formData['json'])
+    }
+    console.log(formData)
+    console.log($form.attr('method'))
+    const requestHeaders = new Headers({
+      'Content-type' : 'application/json'
+    })
+    fetch($form.prop('action'), {
+      headers: requestHeaders,
+      body: JSON.stringify(formData),
+      method: $form.attr('method')
+    })
+
+
+    <!-- fetch -->
+    <!-- $.ajax({ -->
+      <!-- url: $form.prop('action'), -->
+      <!-- method: $form.prop('method'), -->
+      <!-- contentType: "application/json", -->
+      <!-- processData: false, -->
+      <!-- data: JSON.stringify(formData) -->
+
+    <!-- }) -->
+
+  })
+  refreshAlbums()
+
+  $("#here").click(() => {
+    refreshAlbums()
+  })
+
+  $('#btnGetAlbum').click((e) => {
+    const albumPagename = $('#drpAlbumPagename').val();
+    $(e.target).parents("form:first").prop('action', '/album/' + albumPagename)
+    fetch('/album/' + albumPagename)
+      .then(response => response.json())
+      .then((data) => {
+        console.log(data)
+        $('#albumJson').val(JSON.stringify(data, null, "  "))
+        if (data) {
+          $("#imagesList").empty()
+          const $table = $("<table></table>")
+          data['images'].forEach((imageData) => {
+            const $tr = $("<tr></tr>");
+            $tr.append('<td>' + imageData['title'] + '</td>')
+            const imageName = imageData['filename'].substr(0, imageData['filename'].indexOf("."))
+            data['resizes'].forEach((sizeData) => {
+              const resizeLink = '/img/' + albumPagename + '/' + imageName + '-' + sizeData['name'] + '.jpg'
+              $tr.append('<td><a href="' + resizeLink + '" target="boko">' + sizeData['name'] + '</a></td>')
+            })
+            $table.append($tr);
+            console.log()
+            
+          })
+          $("#imagesList").html($table)
+        }
+      })
+  })
+  
+  $('#frmNewImage').submit((e) => {
+    e.preventDefault()
+    e.stopPropagation();
+    const $this = $(e.target);
+    const file = $this.find('input:file')[0].files[0]
+    const albumPagename = $this.find('.albumsList').val();
+    if (albumPagename != "") {
+      const data = new FormData();
+      data.append('new_image', file)
+      fetch('/album/' + albumPagename + '/images', {
+        method: 'post',
+        body: data
+      }).then(response => response.json()).then((data) => {
+        console.log(data);
+      })
+    }
+  })
+})
+const refreshAlbums = () => {
+  fetch('/albums')
+    .then(response => response.json())
+    .then((data) => {
+      $('.albumsList option[value != ""]').remove()
+      data.forEach((album) => {
+        $('.albumsList').append('<option value="' + album['pagename'] + '">' + album['title'] + '</option>');
+      })
+
+      console.log(data)
+    })
+}
+</script>
+<style>
+  label {
+    display: block;
+  }
+  textarea {
+    width:800px;
+    height:200px;
+  }
+  #albumJson{
+    height: 500px;
+  }
+  #imagesList {
+    padding: 10px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="error"></div>
+  <form id="frmCreateAlbum" action="/albums" method="post">
+    <h2>Create Album</h2>
+    <label>
+      Album Name<br />
+      <input type="text" name="title" value="Example Album" />
+    </label>
+    <label>
+      Pagename<br />
+      <input type="text" name="pagename" value="example" />
+    </label>
+    <label>
+      Author<br />
+      <input type="text" name="author" value="Example" />
+    </label>
+    <label>
+      <textarea name="resizes" type="json">[
+    {
+      "Name": "thumbnail",
+      "Width": 500,
+      "Height": 500,
+      "Crop": true
+    },
+    {
+      "Name": "large",
+      "Width": 1500,
+      "Height": 1000,
+      "Crop": false
+    },
+    {
+      "Name": "larger",
+      "Width": 2250,
+      "Height": 1500,
+      "Crop": false
+    }]</textarea>
+    </label>
+    <label>
+      Description<br />
+      <textarea name="description">Best Images</textarea>
+    </label>
+    <input type="submit" value="Submit" />
+  </form>
+
+  <form id="frmNewImage" action="" method="post" enctype="multipart/form-data">
+    <h2>Upload image to Album</h2>
+    <select class="albumsList">
+      <option value="">Select One</option>
+    </select>
+    <input type="file" name="new_image" id="new_image"/>
+    <input type="submit" value="Submit image">
+  </form>
+  <form action="" method="PUT">
+    <h2>Update Album</h2>
+    <select id="drpAlbumPagename"  class="albumsList">
+      <option value="">Select One</option>
+    </select><input type="button" id="btnGetAlbum" value="Get Album" />
+    <div>
+      <textarea name="json" id="albumJson"></textarea>
+    </div>
+    <input type="submit" value="Submit" />
+    <div id="imagesList">
+
+    </div>
+  </form>
+</body>
+</html>
