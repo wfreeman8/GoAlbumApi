@@ -10,7 +10,7 @@ import (
 )
 
 type AlbumController struct {
-  AlbumBasePath string
+  Config *models.Config
 }
 
 type PutAlbumFields struct {
@@ -28,7 +28,7 @@ type PutAlbumFields struct {
 func (albumController *AlbumController) Get(ginContext *gin.Context) {
   albumPagename := ginContext.Param("albumPagename")
 
-  album, err := models.FindAlbum(albumController.AlbumBasePath, albumPagename)
+  album, err := models.FindAlbum(albumController.Config.AlbumBasePath, albumPagename)
   if err == nil {
     ginContext.JSON(http.StatusOK, album.GetAlbumFormatted())
     return
@@ -41,7 +41,7 @@ func (albumController *AlbumController) Get(ginContext *gin.Context) {
 func (albumController *AlbumController) Put(ginContext *gin.Context) {
   albumPagename := ginContext.Param("albumPagename")
 
-  album, err := models.FindAlbum(albumController.AlbumBasePath, albumPagename)
+  album, err := models.FindAlbum(albumController.Config.AlbumBasePath, albumPagename)
   if err == nil {
     albumIsDirty := false
     decoder := json.NewDecoder(ginContext.Request.Body)

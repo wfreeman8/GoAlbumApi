@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript">
+window.addEventListener('DOMContentLoaded', () => {
+  const frmConfig = document.getElementById("frmConfig")
+  frmConfig.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const postData = {}
+    for(let i=0; i<frmConfig.elements.length; i++) {
+      const frmEle = frmConfig.elements.item(i)
+      if (frmEle.name) {
+        postData[frmEle.name] = frmEle.value
+      }
+    }
+
+    if (Object.keys(postData).length >= 2) {
+      const myHeaders = new Headers({
+        "Content-type": "application/json"
+      })
+      fetch(frmConfig.action, {
+        "method": "post",
+        "headers": myHeaders,
+        "body": JSON.stringify(postData)
+      }).then(response => response.json())
+      .then((data) => {
+        if (data.success) {
+          window.setTimeout(() => {
+            window.location.reload();
+          }, 1000)
+        }
+      })
+    }
+  })
+})
+</script>
+<style>
+  h1 {
+    text-align: center;
+  }
+  div {
+    padding:5px 0;
+  }
+  input[type=text] {
+    padding:3px 5px;
+    margin: 3px 0 0 0;
+    width:90%;
+  }
+  input[type=submit] {
+    padding:3px 5px;
+  }
+  #frmConfig {
+    margin:0 auto;
+    width: 200px;
+  }
+  .center {
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<form id="frmConfig" action="/config" method="post">
+  <h1>Setup</h1>
+  <div>
+    <label>
+      Administrator Password: <br />
+      <input type="text" name="password" />
+    </label>
+  </div>
+  <div>
+    <label>
+      Albums Folder Path: <br />
+      <input type="text" name="albums_base_path" value="albums" />
+    </label>
+  </div>
+  <div>
+    <label>
+      Title: <br />
+      <input type="text" name="gallery_title" value="Photo Gallery" />
+    </label>
+  </div>
+  <div class="center">
+    <input type="submit" value="Submit" />
+  </div>
+</form>
+</body>
+</html>

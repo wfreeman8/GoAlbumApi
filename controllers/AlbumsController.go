@@ -23,15 +23,15 @@ type AlbumSummaryResponse struct {
 }
 
 type AlbumsController struct {
-  AlbumBasePath string
+  Config *models.Config
 }
 
 func (albumsController *AlbumsController) Get(ginContext *gin.Context) {
-  albumsEntries, err := os.ReadDir(albumsController.AlbumBasePath)
-  var albumResponseCollection []AlbumSummaryResponse
+  albumsEntries, err := os.ReadDir(albumsController.Config.AlbumBasePath)
+  var albumResponseCollection = []AlbumSummaryResponse{}
   if err == nil {
     for _, albumEntry := range albumsEntries {
-      albumDirPath := albumsController.AlbumBasePath + "/" + albumEntry.Name()
+      albumDirPath := albumsController.Config.AlbumBasePath + "/" + albumEntry.Name()
       albumFolderMeta, err := os.Stat(albumDirPath)
 
       if err == nil && albumFolderMeta.IsDir() {
@@ -57,10 +57,8 @@ func (albumsController *AlbumsController) Get(ginContext *gin.Context) {
         albumResponseCollection = append(albumResponseCollection, AlbumSummaryResponse)
       }
     }
-
-    ginContext.JSON(http.StatusOK, albumResponseCollection)
   }
-
+  ginContext.JSON(http.StatusOK, albumResponseCollection)
 }
 
 func (albumsController *AlbumsController) Post(ginContext *gin.Context) {
@@ -69,11 +67,12 @@ func (albumsController *AlbumsController) Post(ginContext *gin.Context) {
   var err error
   err = decoder.Decode(&album)
 
-  if err == nil {
-    albumPath := albumsController.AlbumBasePath + "/" + album.Pagename
+
+  if  err == nil {
+    albumPath := albumsController.Config.AlbumBasePath + "/" + album.Pagename
     albumJsonPath := albumPath + "/album.json"
     fmt.Println(albumPath)
-    
+
     albumInfo, err := os.Stat(albumPath)
     fmt.Println(err)
     if os.IsNotExist(err) {

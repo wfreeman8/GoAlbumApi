@@ -65,7 +65,7 @@ func SaveImage(imageFile *multipart.FileHeader, filePath string) (Image, error) 
       } else {
         return Image{}, errors.New("Invalid image file type. must be png or jpeg")
       }
-      
+
       if err == nil {
         newImageFs, err := os.Create(filePath)
         defer newImageFs.Close()
@@ -81,8 +81,6 @@ func SaveImage(imageFile *multipart.FileHeader, filePath string) (Image, error) 
           imageMetaData.Width = imageSource.Bounds().Max.X
           return imageMetaData, nil
         }
-        
-
       }
     }
 
@@ -105,7 +103,7 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
   newWidth := resize.Width
   newHeight := resize.Height
   crop := resize.Crop
-  
+
   imageSourceFs, err := os.Open(albumImage.FilePath)
   defer imageSourceFs.Close()
   if err != nil {
@@ -163,7 +161,7 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
       orgXMiddleBottom := int(orgHeight) - orgImageHeightCut
       orgImageRect = image.Rect(0, orgXMiddleTop, imageData.Bounds().Max.X, orgXMiddleBottom)
     }
-    
+
   } else {
     if orgImageRatio > newImageRatio {
       newHeight = int(math.Round((orgHeight / orgWidth) * float64(newWidth)))

@@ -9,12 +9,12 @@ import (
 )
 
 type AlbumImageController struct{
-  AlbumBasePath string
+  Config *models.Config
 }
 
 func (albumImageController *AlbumImageController) Get(ginContext *gin.Context) {
   albumPagename := ginContext.Param("albumPagename")
-  album, err := models.FindAlbum(albumImageController.AlbumBasePath, albumPagename)
+  album, err := models.FindAlbum(albumImageController.Config.AlbumBasePath, albumPagename)
 
   if err == nil {
     imgFileName := ginContext.Param("imgFileName")

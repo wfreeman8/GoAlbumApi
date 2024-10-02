@@ -7,12 +7,12 @@ import (
 )
 
 type AlbumImagesController struct {
-  AlbumBasePath string
+  Config *models.Config
 }
 
 func (albumImagesController *AlbumImagesController) Post(ginContext *gin.Context) {
   albumPagename := ginContext.Param("albumPagename")
-  album, err := models.FindAlbum(albumImagesController.AlbumBasePath, albumPagename)
+  album, err := models.FindAlbum(albumImagesController.Config.AlbumBasePath, albumPagename)
   if err == nil {
     imageFile, _ := ginContext.FormFile("new_image")
     err = album.SaveUploadedImage(imageFile)
