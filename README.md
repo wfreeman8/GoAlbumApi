@@ -37,3 +37,4 @@ Visit http://localhost:3000/ to configure the album. After saving the password y
 * require Authorization password to be encoded
 * add backend validation to endpoints
 * handle logging and exceptions better, return errors in response
+* add whitelisting domains to config.json and setup CORS middleware to respect that
