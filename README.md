@@ -28,10 +28,18 @@ go run main.go
 Visit http://localhost:3000/ to configure the album. After saving the password you should be directed to the temporary administrative form. You must have your current password entered at the top to create or update albums, update the configuration file, or to upload images. The password is delivered in the Authorization HTTP header
 
 
+## Endpoints
+
+[Review the REST Endpoints available for GoAlbumApi here](APIREFERENCE.md)
+
+
 ## Future Features
 
+* create react app to complement GoAlbumApi and replace temporary administration forms
 * add endpoint to delete images
 * add endpoint to delete albums
+* pull image meta data - latitude, longitude
+* allow setting image title
 * define default image resizes
 * add parameter to hide albums from the public albums endpoint
 * require Authorization password to be encoded

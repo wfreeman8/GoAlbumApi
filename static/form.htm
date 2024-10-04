@@ -4,9 +4,10 @@
 <script type="text/javascript">
 $ = jQuery;
 $(function() {
-  $("#frmCreateAlbum, #frmConfigUpdate").submit(function(e) {
+  $("#frmCreateAlbum, #frmConfigUpdate, #frmUpdateAlbum").submit(function(e) {
     e.preventDefault()
     e.stopPropagation()
+
     let formData = {}
     const $form = $(e.target)
     $("input:text, input:password, textarea", $form).each((idx, ele) => {
@@ -26,14 +27,20 @@ $(function() {
       }
     })
     if (formData['json']) {
-      formData = JSON.parse(formData['json'])
+      formData = formData['json']
     }
     const adminPassword = $('#adminPassword').val();
     const requestHeaders = new Headers({
       'Content-type' : 'application/json',
       'Authorization': adminPassword
     })
-    fetch($form.prop('action'), {
+    let action = $form.prop('action')
+    if ($form.is("#frmUpdateAlbum")){
+      const albumPagename = $('#drpAlbumPagename').val();
+      action = '/album/' + albumPagename
+    }
+
+    fetch(action, {
       headers: requestHeaders,
       body: JSON.stringify(formData),
       method: $form.attr('method')
@@ -42,7 +49,7 @@ $(function() {
   })
   refreshAlbums()
 
-  $("#here").click(() => {
+  $("#reloadAlbums").click(() => {
     refreshAlbums()
   })
 
@@ -138,11 +145,17 @@ const refreshAlbums = () => {
 </style>
 </head>
 <body>
+  <h1>Temporary Simple Administration Form</h1>
+
+
+  <p>You must enter the current password to perform modifying actions - update gallery password/gallery title, create album, update album, upload image,
+    <div>
+      <strong>Current Password:</strong> <input type="password" id="adminPassword" />
+    </div>
+  </p>
+
   <form id="frmConfigUpdate" method="PUT" action="/config">
     <h2>Update Password</h2>
-    <div>
-      Current Password: <input type="password" id="adminPassword" />
-    </div>
     <div>
       New Password: <input type="password" name="password" />
     </div>
@@ -153,6 +166,8 @@ const refreshAlbums = () => {
       <input type="submit" value="Update Password" />
     </div>
   </form>
+
+
   <div class="error"></div>
   <form id="frmCreateAlbum" action="/albums" method="post">
     <h2>Create Album</h2>
@@ -195,7 +210,7 @@ const refreshAlbums = () => {
     </label>
     <input type="submit" value="Submit" />
   </form>
-
+  <input type="button" id="reloadAlbums" value="Reload Albums List" />
   <form id="frmNewImage" action="" method="post" enctype="multipart/form-data">
     <h2>Upload image to Album</h2>
     <select class="albumsList">
@@ -204,13 +219,13 @@ const refreshAlbums = () => {
     <input type="file" name="new_image" id="new_image"/>
     <input type="submit" value="Submit image">
   </form>
-  <form action="" method="PUT">
+  <form action="" id="frmUpdateAlbum" method="PUT">
     <h2>Update Album</h2>
     <select id="drpAlbumPagename"  class="albumsList">
       <option value="">Select One</option>
     </select><input type="button" id="btnGetAlbum" value="Get Album" />
     <div>
-      <textarea name="json" id="albumJson"></textarea>
+      <textarea type="json" name="json" id="albumJson"></textarea>
     </div>
     <input type="submit" value="Submit" />
     <div id="imagesList">

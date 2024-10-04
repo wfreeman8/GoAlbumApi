@@ -18,7 +18,6 @@ type PutAlbumFields struct {
   Author string `json:"author"`
   Description string `json:"description"`
   DateTaken string `json:"created_datetime"`
-  Pagename string `json:"pagename"`
   FeaturedImage string `json:"featured_image"`
   ThumbnailSize string `json:"thumbnail_size"`
   LargeSize string `json:"large_size"`
