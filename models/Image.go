@@ -52,42 +52,49 @@ func getImageDataByPath(imageFilePath string) (Image) {
 func SaveImage(imageFile *multipart.FileHeader, filePath string) (Image, error) {
   imageType := strings.ToLower(path.Ext(imageFile.Filename))
   var err error
-  if imageType == ".jpg" || imageType == ".png" {
-    imageFileData, err := imageFile.Open()
-    defer imageFileData.Close()
-
-    var imageSource image.Image
-    if err == nil {
-      if imageType == ".jpg" {
-        imageSource, err = jpeg.Decode(imageFileData)
-      } else if imageType == ".png" {
-       imageSource, err = png.Decode(imageFileData)
-      } else {
-        return Image{}, errors.New("Invalid image file type. must be png or jpeg")
-      }
-
-      if err == nil {
-        newImageFs, err := os.Create(filePath)
-        defer newImageFs.Close()
-        if err != nil {
-          return Image{}, err
-        }
-        err = jpeg.Encode(newImageFs, imageSource, &jpeg.Options{Quality: 100})
-        if err == nil {
-          imageMetaData := Image{}
-          imageMetaData.FilePath = filePath
-          imageMetaData.Title = path.Base(imageFile.Filename)
-          imageMetaData.Height = imageSource.Bounds().Max.Y
-          imageMetaData.Width = imageSource.Bounds().Max.X
-          return imageMetaData, nil
-        }
-      }
-    }
-
-  } else {
-    err = errors.New("Image is invalid format")
+  if imageType != ".jpg" && imageType != ".png" {
+    return Image{}, errors.New("Image is invalid format")
   }
-  return Image{}, err
+
+  imageFileData, err := imageFile.Open()
+  defer imageFileData.Close()
+
+  if err != nil {
+      return Image{}, err
+  }
+
+  var imageSource image.Image
+
+  if imageType == ".jpg" {
+    imageSource, err = jpeg.Decode(imageFileData)
+  } else if imageType == ".png" {
+   imageSource, err = png.Decode(imageFileData)
+  } else {
+    return Image{}, errors.New("Invalid image file type. must be png or jpeg")
+  }
+
+  if err != nil {
+    return Image{}, err
+  }
+  newImageFs, err := os.Create(filePath)
+  defer newImageFs.Close()
+
+  if err != nil {
+    return Image{}, err
+  }
+
+  err = jpeg.Encode(newImageFs, imageSource, &jpeg.Options{Quality: 100})
+  if err != nil {
+    return Image{}, err
+  }
+
+  imageMetaData := Image{}
+  imageMetaData.FilePath = filePath
+  imageMetaData.Title = path.Base(imageFile.Filename)
+  imageMetaData.Height = imageSource.Bounds().Max.Y
+  imageMetaData.Width = imageSource.Bounds().Max.X
+  return imageMetaData, nil
+
 }
 
 func (albumImage *Image) GetBytes() ([]byte) {
@@ -114,6 +121,7 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
   imageFilename := path.Base(albumImage.FilePath)
   imageExt := path.Ext(imageFilename)
   imageFilenameBase := strings.TrimSuffix(imageFilename, imageExt)
+
   cropStr := "0"
   if crop {
     cropStr = "1"
@@ -121,13 +129,18 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
 
   resizedImageFilename := fmt.Sprintf("%s-%dx%dx%s%s", imageFilenameBase, newWidth, newHeight, cropStr, imageExt)
   resizedImageFilePath := path.Join(albumImagePath, resizedImageFilename)
-  newImageBytes, err := ioutil.ReadFile(resizedImageFilePath)
-  if err == nil {
+
+  if newImageBytes, err := ioutil.ReadFile(resizedImageFilePath); err == nil {
     return newImageBytes
   }
 
-  newImageFs, _ := os.Create(resizedImageFilePath)
+  newImageFs, err := os.Create(resizedImageFilePath)
   defer newImageFs.Close()
+
+  if err != nil {
+    log.Fatal(err)
+    return []byte{}
+  }
 
   imageData, _ := jpeg.Decode(imageSourceFs)
   orgWidth := float64(imageData.Bounds().Max.X)
@@ -169,6 +182,7 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
       newWidth = int(math.Round(orgImageRatio * float64(newHeight)))
     }
   }
+
   newImage = image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
   draw.NearestNeighbor.Scale(newImage, newImage.Bounds(), imageData, orgImageRect, draw.Over, nil)
 
@@ -176,13 +190,15 @@ func (albumImage *Image) GetResizeBytes(resize ImageResize) ([]byte) {
   newImageFs.Close()
 
   imageBytes, err := ioutil.ReadFile(resizedImageFilePath)
-  if err == nil {
-    return imageBytes
-  } else {
+
+  if err != nil {
     fmt.Println("err-------")
     fmt.Println(err)
+    return []byte{}
   }
-  return []byte{}
+
+  return imageBytes
+
 }
 
 func (albumImage *Image) GetImageFormatted() ImageFormatted {

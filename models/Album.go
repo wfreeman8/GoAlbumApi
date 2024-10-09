@@ -53,18 +53,24 @@ type AlbumFormatted struct {
 func FindAlbum(albumBasePath string, albumPagename string) (Album, error) {
   albumFolderPath := albumBasePath + "/" + albumPagename
   albumDirMeta, err := os.Stat(albumFolderPath)
-  if err == nil && albumDirMeta.IsDir() {
+  if err != nil {
+    return  Album{}, err
+  }
+
+  if albumDirMeta.IsDir() {
     albumJsonFile, err := os.Open(albumFolderPath + "/album.json")
     defer albumJsonFile.Close()
+    if err != nil {
+      return  Album{}, err
+    }
+
+    albumJsonContent, _ := io.ReadAll(albumJsonFile)
+    album := Album{
+      albumFolderPath: albumFolderPath,
+    }
+    err = json.Unmarshal(albumJsonContent, &album)
     if err == nil {
-      albumJsonContent, _ := io.ReadAll(albumJsonFile)
-      album := Album{
-        albumFolderPath: albumFolderPath,
-      }
-      err = json.Unmarshal(albumJsonContent, &album)
-      if err == nil {
-        return album, nil
-      }
+      return album, nil
     }
   }
 
@@ -82,22 +88,28 @@ func (album *Album) SetAlbumPath(albumPath string) {
 func (album *Album) DeleteResizeImages(imageBasename string) {
   albumDirMeta, err := os.Stat(album.albumFolderPath)
   resizeImageRegex := regexp.MustCompile(`-\d+x\d+x\d.jpg$`)
-  if err == nil && albumDirMeta.IsDir() {
-    albumDirEntries, err := os.ReadDir(album.albumFolderPath)
-    if err == nil {
-      for _, albumDirEntry := range albumDirEntries {
-        entryExt := path.Ext(albumDirEntry.Name())
-        if strings.ToLower(entryExt) == ".jpg" {
-          if imageBasename != "" {
-            if strings.HasPrefix(albumDirEntry.Name(), imageBasename + "-") == false {
-              continue
-            }
-          }
+  if err != nil {
+    return
+  }
 
-          imagePath := album.albumFolderPath + "/" + albumDirEntry.Name()
-          if resizeImageRegex.MatchString(albumDirEntry.Name()) {
-            os.Remove(imagePath)
+  if albumDirMeta.IsDir() {
+    albumDirEntries, err := os.ReadDir(album.albumFolderPath)
+    if err != nil {
+      return
+    }
+
+    for _, albumDirEntry := range albumDirEntries {
+      entryExt := path.Ext(albumDirEntry.Name())
+      if strings.ToLower(entryExt) == ".jpg" {
+        if imageBasename != "" {
+          if strings.HasPrefix(albumDirEntry.Name(), imageBasename + "-") == false {
+            continue
           }
+        }
+
+        imagePath := album.albumFolderPath + "/" + albumDirEntry.Name()
+        if resizeImageRegex.MatchString(albumDirEntry.Name()) {
+          os.Remove(imagePath)
         }
       }
     }
@@ -106,30 +118,36 @@ func (album *Album) DeleteResizeImages(imageBasename string) {
 
 func (album *Album) CheckAndResetImagesIndex() (bool, error) {
   albumDirMeta, err := os.Stat(album.albumFolderPath)
-  if err == nil && albumDirMeta.IsDir() {
-    albumDirEntries, err := os.ReadDir(album.albumFolderPath)
-    if err == nil {
-      dirImageList := []string{}
-      for _, albumDirEntry := range albumDirEntries {
-        dirEntryExt := strings.ToLower(path.Ext(albumDirEntry.Name()))
-        if !strings.Contains(albumDirEntry.Name(), "-") && dirEntryExt == ".jpg" {
-          dirImageList = append(dirImageList, albumDirEntry.Name())
-        }
-      }
-      jsonImageList := []string{}
-      for _, imageMeta := range album.Images {
-        jsonImageList = append(jsonImageList, path.Base(imageMeta.FilePath))
-      }
 
-      if reflect.DeepEqual(dirImageList, jsonImageList) == false {
-        album.DeleteResizeImages("")
-        album.IndexImagesWithDirectory()
-        return true, nil
-      }
-    } else {
+  if err != nil {
+    return false, err
+  }
+
+  if albumDirMeta.IsDir() {
+    albumDirEntries, err := os.ReadDir(album.albumFolderPath)
+    if err != nil {
       return false, errors.New("Invalid directory for album")
     }
+
+    dirImageList := []string{}
+    for _, albumDirEntry := range albumDirEntries {
+      dirEntryExt := strings.ToLower(path.Ext(albumDirEntry.Name()))
+      if !strings.Contains(albumDirEntry.Name(), "-") && dirEntryExt == ".jpg" {
+        dirImageList = append(dirImageList, albumDirEntry.Name())
+      }
+    }
+    jsonImageList := []string{}
+    for _, imageMeta := range album.Images {
+      jsonImageList = append(jsonImageList, path.Base(imageMeta.FilePath))
+    }
+
+    if reflect.DeepEqual(dirImageList, jsonImageList) == false {
+      album.DeleteResizeImages("")
+      album.IndexImagesWithDirectory()
+      return true, nil
+    }
   }
+
   return false, nil
 }
 
@@ -142,7 +160,7 @@ func (album *Album) IndexImagesWithDirectory() {
     entryExt := path.Ext(albumDirEntry.Name())
     if entryExt == ".JPG" {
       imagePath := album.albumFolderPath + "/" + albumDirEntry.Name()
-      
+
       // because golang won't rename just for case change must rename twice to workaround
       tmpImagePath := album.albumFolderPath + "/" + strings.ToLower(albumDirEntry.Name()) + ".tmp"
       err := os.Rename(imagePath, tmpImagePath)
@@ -176,28 +194,30 @@ func (album *Album) SaveUploadedImage(imageFile *multipart.FileHeader) (error) {
   if len(newFilename) < 5 {
     return errors.New("Filename is too short, must be greater than 5 characters")
   }
+
   newImagePath := album.albumFolderPath + "/" + newFilename + ".jpg"
 
   // Save Image to album folder and add to album JSON
   newImage, err := SaveImage(imageFile, newImagePath)
-  if err == nil {
-    currentImageEntry, _ := album.RetrieveImage(path.Base(newImage.FilePath))
-
-    if currentImageEntry.Title != "" {
-      currentImageEntry.Title = newImage.Title
-      currentImageEntry.Width = newImage.Width
-      currentImageEntry.Height = newImage.Height
-
-      // delete old resized images
-      album.DeleteResizeImages(newFilename)
-    } else {
-      album.Images = append(album.Images, newImage)
-    }
-    album.Save()
-    return nil
+  if err != nil {
+    return err
   }
 
-  return err
+  currentImageEntry, _ := album.RetrieveImage(path.Base(newImage.FilePath))
+
+  if currentImageEntry.Title != "" {
+    currentImageEntry.Title = newImage.Title
+    currentImageEntry.Width = newImage.Width
+    currentImageEntry.Height = newImage.Height
+
+    // delete old resized images
+    album.DeleteResizeImages(newFilename)
+  } else {
+    album.Images = append(album.Images, newImage)
+  }
+  album.Save()
+  return nil
+
 }
 
 func (album *Album) RetrieveImage(imageFilename string) (*Image, error) {
@@ -234,7 +254,7 @@ func (album *Album) Save() (error) {
   _, err := os.Stat(albumJsonPath)
   albumJsonFile := new(os.File)
   var openFileErr error
-  if err != nil {
+  if errors.Is(err, os.ErrNotExist) {
     albumJsonFile, openFileErr = os.Create(albumJsonPath)
   } else {
     albumJsonFile, openFileErr = os.OpenFile(albumJsonPath, os.O_TRUNC | os.O_WRONLY, 0644)
@@ -242,6 +262,7 @@ func (album *Album) Save() (error) {
   if openFileErr != nil {
     return openFileErr
   }
+
   albumJson, jsonErr := json.Marshal(album)
   if jsonErr != nil {
     return jsonErr

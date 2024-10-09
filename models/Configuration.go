@@ -33,16 +33,17 @@ func HasConfiguration() bool {
 func GetConfiguration() (*Config, error) {
   _, err := os.Stat(configFilename)
   var config = new(Config)
-  if err == nil {
-    configFs, err := os.Open(configFilename)
-    defer configFs.Close()
-    if err == nil {
-      configContent, _ := io.ReadAll(configFs)
-      err = json.Unmarshal(configContent, &config)
-      return config, nil
-    }
-
+  if err != nil {
+    return config, err
   }
+  configFs, err := os.Open(configFilename)
+  defer configFs.Close()
+  if err != nil {
+    return config, err
+  }
+
+  configContent, _ := io.ReadAll(configFs)
+  err = json.Unmarshal(configContent, &config)
   return config, err
 }
 
@@ -110,13 +111,15 @@ func (config *Config) Save(createConfig bool) (error) {
   }
 
   configJson, err := json.Marshal(config)
-  if err == nil {
-    configFs.Write(configJson)
-    fmt.Println("config.json saved")
-  } else {
+  if err != nil {
     configFs.Close()
     os.Remove(configFilename)
+    return err
   }
+
+  configFs.Write(configJson)
+  fmt.Println("config.json saved")
+
   return err
 }
 

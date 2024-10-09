@@ -13,17 +13,22 @@ type AlbumImagesController struct {
 func (albumImagesController *AlbumImagesController) Post(ginContext *gin.Context) {
   albumPagename := ginContext.Param("albumPagename")
   album, err := models.FindAlbum(albumImagesController.Config.AlbumBasePath, albumPagename)
-  if err == nil {
-    imageFile, _ := ginContext.FormFile("new_image")
-    err = album.SaveUploadedImage(imageFile)
-    if err == nil {
-      ginContext.JSON(http.StatusOK, album.GetAlbumFormatted().Images)
-      return
-    }
+  if err != nil {
+    ginContext.JSON(http.StatusNotFound, gin.H{
+      "message": "Album not found",
+    })
+    return
+  }
+  imageFile, _ := ginContext.FormFile("new_image")
+  err = album.SaveUploadedImage(imageFile)
+
+  if err != nil {
+    ginContext.JSON(http.StatusOK, gin.H{
+      "success": false,
+      "error": err.Error(),
+    })
+    return
   }
 
-  ginContext.JSON(http.StatusOK, gin.H{
-    "success": false,
-    "error": err.Error(),
-  })
+  ginContext.JSON(http.StatusOK, album.GetAlbumFormatted().Images)
 }
